@@ -1,0 +1,178 @@
+<template>
+  <div
+    class="slab"
+    :style="{ 'grid-area': `${x} / ${y} / ${x2}/ ${y2}` }"
+    v-if="visibleFaces.length > 0"
+    :class="[
+      !isHexColor(color) ? 'svg' : color.replace('#', ''),
+      {
+        add: $ctx.tool === 'add',
+        fill: $ctx.tool === 'fill',
+        sub: $ctx.tool === 'erase',
+      },
+    ]"
+  >
+    <div
+      v-for="face in visibleFaces"
+      :key="face"
+      :class="['face', face]"
+      :style="faceStyles(face)"
+      @mouseup="$ctx.drag = false"
+    ></div>
+  </div>
+</template>
+
+<script>
+export default {
+  props: ["x", "y", "x2", "y2", "z", "color", "texture"],
+  computed: {
+    faceStyles() {
+      return (face) => {
+        const baseStyles = this.isHexColor(this.color)
+          ? { backgroundColor: this.adjustColor(this.color, face) }
+          : {
+              backgroundSize: "cover",
+              backgroundImage: `url(textures/${this.color.replace(
+                "#",
+                ""
+              )}/${this.color.replace("#", "")}-${face}.svg)`,
+            };
+
+        return baseStyles; // Default for other faces
+      };
+    },
+
+    visibleFaces() {
+      return ["t", "b", "bl", "br", "fr", "fl"].filter((face) => {
+        const [dx, dy, dz] = this.$ctx.offsets[face];
+
+        const neighborZ = this.z + dz;
+        const neighborKey = `${this.x + dx}/${this.y + dy}/${this.x2 + dx}/${
+          this.y2 + dy
+        }`;
+        const neighborVoxel = this.$ctx.voxels[neighborZ]?.[neighborKey];
+
+        return (
+          (!neighborVoxel || neighborVoxel.shape !== "slab") &&
+          !(face === "b" && this.z === 0) &&
+          !this.$ctx.walls[face]
+        );
+      });
+    },
+  },
+  methods: {
+    isHexColor(color) {
+      return /^#[0-9A-F]{6}$/i.test(color);
+    },
+    adjustColor(color, face) {
+      // Convert the color to RGB
+      const rgb = color.match(/\w\w/g).map((x) => parseInt(x, 16));
+
+      // Determine the adjustment factor for each face
+      let adjustment = 0;
+      if (face === "fr") adjustment = -15; // Darken slightly
+      if (face === "fl") adjustment = -25; // Darken more
+      if (face === "bl" || face === "br") adjustment = -35; // Darkest faces
+
+      // Apply the adjustment
+      const adjusted = rgb.map((channel) =>
+        Math.min(255, Math.max(0, channel + adjustment))
+      );
+
+      // Convert back to hex
+      return `rgb(${adjusted[0]}, ${adjusted[1]}, ${adjusted[2]})`;
+    },
+  },
+};
+</script>
+<style lang="scss">
+.slab {
+  display: block;
+  position: absolute;
+  width: 50px;
+  height: 25px;
+  transform: translateZ(12.5px);
+  &.svg .face {
+    &:after {
+      pointer-events: none;
+      content: "";
+      position: absolute;
+      inset: 0;
+    }
+    &.t:after {
+      background: rgba(0, 0, 0, 0);
+    }
+
+    &.fr:after {
+      background: rgba(0, 0, 0, 0.05);
+    }
+
+    &.fl:after {
+      background: rgba(0, 0, 0, 0.1);
+    }
+
+    &.bl:after {
+      background: rgba(0, 0, 0, 0.15);
+    }
+
+    &.br:after {
+      background: rgba(0, 0, 0, 0.1);
+    }
+  }
+  .face {
+    position: absolute;
+    inset: 0;
+    outline: 1px solid rgba(0, 0, 0, 0.05);
+
+    &.t {
+      transform: translateZ(12.5px);
+      height: 50px;
+    }
+    &.b {
+      transform: translateZ(-12.5px);
+    }
+    &.fr {
+      transform: rotateY(90deg) rotate(90deg) translateX(12.5px)
+        translateZ(25px);
+    }
+    &.fl {
+      transform: rotateX(90deg) translateZ(-37.5px);
+    }
+    &.bl {
+      transform: rotateY(90deg) rotate(90deg) translateX(12.5px)
+        translateZ(-25px);
+    }
+    &.br {
+      transform: rotateX(90deg) translateZ(12.5px);
+    }
+
+    svg {
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
+    }
+  }
+
+  &.selected .face,
+  &.select:hover .face {
+    outline: 1.5px solid red;
+    outline-offset: -1.5px;
+    cursor: pointer;
+  }
+
+  &.sub:hover .face {
+    outline: 1.5px solid red;
+    outline-offset: -1.5px;
+    cursor: pointer;
+
+    &:before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: rgba(255, 0, 0, 0.5);
+      z-index: 9999;
+    }
+  }
+}
+</style>
