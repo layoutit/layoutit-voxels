@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Interactive 3D CSS grid and voxel generator.",
   "private": true,
-  "license": "ISC",
+  "license": "GPL-2.0-only",
   "scripts": {
     "dev": "nuxt",
     "build": "nuxt build",

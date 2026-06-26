@@ -88,4 +88,4 @@ Generated output and local dependencies are intentionally ignored:
 
 ## License
 
-Layoutit Voxels source code is [ISC](LICENSE).
+Layoutit Voxels source code is [GPL-2.0-only](LICENSE).
